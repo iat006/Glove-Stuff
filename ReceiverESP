@@ -1,0 +1,97 @@
+/*
+  test bluetooth connection for RECEIVER esp (connected to leonardo)
+  chip is: ESP32-D0WD-V3
+  MAC: e8:6b:ea:d0:c4:88
+*/
+
+#include <esp_now.h>
+#include <WiFi.h>
+#include <HardwareSerial.h>
+
+#define RXD2 16
+#define TXD2 17
+
+
+// Structure example to receive data
+// Must match the sender structure
+typedef struct struct_message {
+  float x;
+  float y;
+  float z;
+
+} struct_message ;
+// Create a struct_message called message
+struct_message message;
+
+
+
+ 
+void setup() {
+  // Initialize Serial Monitor
+  Serial.begin(115200);
+  Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
+  
+  // Set device as a Wi-Fi Station
+  WiFi.mode(WIFI_STA);
+
+  // Init ESP-NOW
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+  
+  // Once ESPNow is successfully Init, we will register for recv CB to
+  // get recv packer info
+  esp_now_register_recv_cb(OnDataRecv);
+}
+ 
+void loop() {
+  
+
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+
+
+// callback function that will be executed when data is received
+void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
+  memcpy(&message, incomingData, sizeof(message));
+  Serial.print("Bytes received: ");
+
+  Serial2.print("Bytes received: ");
+  
+  Serial2.println(len);
+  
+  Serial.println(len);
+
+  if(message.x >= message.y && message.x >= message.z){
+    Serial2.println("0"); // send left arrow command
+    Serial.println("0: left");
+     
+  }
+  // Serial.print("X gyro: ");
+  // Serial.println(message.x);
+
+  else if(message.y >= message.x && message.y >= message.z){
+      Serial2.println("1"); // send right arrow command
+      Serial.println("1: right");
+    }
+  // Serial.print("Y gyro: ");
+  // Serial.println(message.y);
+  
+  else if(message.z >= message.x && message.z >= message.y){
+        Serial2.println("2"); // send esc command
+        Serial.println("2: esc");
+    } 
+  else if (message.x == message.z && message.x == message.y){
+    Serial2.println("wait there");
+    Serial.println("wait here");
+  }
+  // Serial.print("Z gyro: ");
+  // Serial.println(message.z);
+  
+ 
+  Serial.println();
+
+
+}
