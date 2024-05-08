@@ -1,0 +1,213 @@
+/*  Isaiah Thigpen, Thaddeaus Williams, Lucas Bourg
+ *  
+ * ENGR 122 PROJECT
+  Code for ESP32 MCU
+ */
+
+// * * * * * * * * * * *LOADING LIBRARIES * * * * * * * * * * * * * * *
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+
+#include <Wire.h>
+#include <ezButton.h>
+
+#include <esp_now.h>
+#include <WiFi.h>
+
+// * * * * * * * * * * *  INITIALIZATION * * * * * * * * * * * * * * * *
+Adafruit_MPU6050 mpu;
+uint8_t broadcastAddress[] = {0xE8, 0x6B, 0xEA, 0xD0, 0xC4, 0x88}; 
+
+//struct to send data (must match receiver struture)
+typedef struct struct_message{
+  float x = 0.0;
+  float y = 0.0;
+  float z = 0.0;
+} struct_message;
+
+// create a struct_message called message
+struct_message message;
+
+
+esp_now_peer_info_t peerInfo;
+
+const int MPU_ADDR = 0x68; // I2c address of MPU-6050
+int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
+
+ezButton mySwitch(18);
+
+// * * * * * * * * * *  PREDEFINED FUNCTIONS (MAIN PROGRAM) * * * * * * *
+
+void setup() {
+  Serial.begin(115200);  // Start serial communication at 115200 baud
+  WiFi.mode(WIFI_STA);  // set to station mode
+  mySwitch.setDebounceTime(50); // set debounce 50ms
+
+  // accel
+  init6050();
+
+  // espnow
+  if (esp_now_init() != ESP_OK) {
+    Serial.println("Error initializing ESP-NOW");
+    return;
+  }
+  // get status of transmitted packet
+  esp_now_register_send_cb(OnDataSent);
+
+
+  //register peer
+  memcpy(peerInfo.peer_addr, broadcastAddress, 6);
+  peerInfo.channel = 0;
+  peerInfo.encrypt = false;
+
+  //add peer
+  if (esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("failed to add peer");
+    return;
+  }
+
+  // Configure MPU6050 settings
+  setupMPU6050();
+  
+}
+
+void loop() {
+  mySwitch.loop();
+  int switchState = mySwitch.getState();
+
+  //set values to send
+  message.x = message.x;
+  message.y = message.y;
+  message.z = message.z;
+
+  //send message via ESPNOW
+  esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &message, sizeof(message));
+
+  if (result == ESP_OK){
+    Serial.println("Sent with success");
+  }else{
+    Serial.println("Error sending the data");
+  }delay(2000);
+
+
+  if(!switchState){
+    readMPU6050();
+    
+
+
+  }else{
+    //do nothing
+
+  }
+
+}
+// * * * * * * * * * * USER DEFINED FUNCTIONS * * * * * * * * * * *
+void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status){
+  Serial.print("\r\nLast packet Send Status:\t");
+  Serial.println(status == ESP_NOW_SEND_SUCCESS ? "Delivery Success" : "Delivery Fail");
+}
+
+void setupMPU6050(){
+  Wire.begin(21, 22, 100000); //sda, scl, clock speed
+  Wire.beginTransmission(MPU_ADDR);
+  Wire.write(0x6B); // PWR_MGMT_1 register
+  Wire.write(0);    // set to zero (wake up mcu)
+  Wire.endTransmission(true);
+  Serial.println("MPU-6050 setup complete");
+}
+
+void readMPU6050(){
+      // Read accelerometer data
+    sensors_event_t a, g, temp;
+    mpu.getEvent(&a, &g, &temp);
+
+    //create formatted strong of accel data
+    String data = "X:" + String(a.gyro.x) + ", Y:" + String(a.gyro.y) + ", Z:" + String(a.gyro.z);
+    message.x = a.gyro.x;
+    message.y = a.gyro.y;
+    message.z = a.gyro.z;
+
+    Serial.println(data); //print to esp32 serial monitor
+    delay(300); // delay to manage data rate
+
+    
+}
+
+void init6050(){
+    while(!Serial)
+    delay(10); // pause until serial activated
+
+    Serial.println("Adafruit MPU6050 test");
+  //initialize 6050 
+  if (!mpu.begin()){
+    Serial.println("Failed to find MPU6050 chip:(");
+    while(1){
+      delay(10);
+    }
+  }
+  Serial.println("MPU6050 found");
+
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  Serial.print("Accelerometer range set to: ");
+  switch (mpu.getAccelerometerRange()){
+    case MPU6050_RANGE_2_G:
+      Serial.println("+-2g");
+      break;
+    case MPU6050_RANGE_4_G:
+      Serial.println("+-4g");
+      break;
+    case MPU6050_RANGE_8_G:
+      Serial.println("+-8G");
+      break;
+    case MPU6050_RANGE_16_G:
+      Serial.println("+-16G");
+      break;
+  }
+
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  Serial.print("Gryo range set to: ");
+  switch (mpu.getGyroRange()){
+    case MPU6050_RANGE_250_DEG:
+      Serial.println("+- 250 deg/s");
+      break;
+    case MPU6050_RANGE_500_DEG:
+      Serial.println("+- 500 deg/s");
+      break;
+    case MPU6050_RANGE_1000_DEG:
+      Serial.println("+- 1000 deg/s");
+      break;
+    case MPU6050_RANGE_2000_DEG:
+      Serial.println("+- 2000 deg/s");
+      break;
+  }
+
+  mpu.setFilterBandwidth(MPU6050_BAND_5_HZ);
+  Serial.print("Filter bandwidth set to: ");
+  switch (mpu.getFilterBandwidth()) {
+  case MPU6050_BAND_260_HZ:
+    Serial.println("260 Hz");
+    break;
+  case MPU6050_BAND_184_HZ:
+    Serial.println("184 Hz");
+    break;
+  case MPU6050_BAND_94_HZ:
+    Serial.println("94 Hz");
+    break;
+  case MPU6050_BAND_44_HZ:
+    Serial.println("44 Hz");
+    break;
+  case MPU6050_BAND_21_HZ:
+    Serial.println("21 Hz");
+    break;
+  case MPU6050_BAND_10_HZ:
+    Serial.println("10 Hz");
+    break;
+  case MPU6050_BAND_5_HZ:
+    Serial.println("5 Hz");
+    break;
+  }
+  Serial.println("");
+  delay(100);
+
+}
+
