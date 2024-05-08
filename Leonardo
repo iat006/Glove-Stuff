@@ -1,0 +1,48 @@
+/* Testing arduino leonardo receiving infomation from receiver esp32
+
+*/
+// left arrow = 0
+// right arrow = 1
+// esc = 2
+
+#include <Keyboard.h>
+void setup() {
+  // put your setup code here, to run once:
+  Serial1.begin(115200);
+
+
+}
+
+void loop() {
+ // put your main code here, to run repeatedly:
+
+//read uart input
+
+  if (!Serial1.available()){
+    delay(200);
+  }else{
+    String data = Serial1.readString();
+    Serial.println(data);
+  // handle input
+  if(Serial1.readString() == "0"){
+    Keyboard.press(KEY_LEFT_ARROW);
+
+    Keyboard.releaseAll();
+    Serial.println("left");
+  }
+  else if (Serial1.readString() == "1"){
+    Keyboard.press(KEY_RIGHT_ARROW);
+    Keyboard.press(KEY_LEFT_GUI);
+
+    Keyboard.releaseAll();
+    Serial.println("right");
+  }
+  else if (Serial1.readString() == "2"){
+    Keyboard.press(KEY_ESC);
+
+    Keyboard.releaseAll();
+    Serial.println("Esc");
+  }
+}
+
+}
