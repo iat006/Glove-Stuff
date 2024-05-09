@@ -24,7 +24,7 @@ void loop() {
     data = Serial1.readString();
     data.trim();
     Serial.println(data);
-    // Keyboard.press('a'); // press a one time
+  
 
 
     if (data == "0"){
