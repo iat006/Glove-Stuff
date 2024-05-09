@@ -4,6 +4,8 @@
   Code for ESP32 MCU
  */
 
+
+
 // * * * * * * * * * * *LOADING LIBRARIES * * * * * * * * * * * * * * *
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
@@ -22,7 +24,7 @@ uint8_t broadcastAddress[] = {0xE8, 0x6B, 0xEA, 0xD0, 0xC4, 0x88};
 typedef struct struct_message{
   float x = 0.0;
   float y = 0.0;
-  float z = 0.0;
+
 } struct_message;
 
 // create a struct_message called message
@@ -52,7 +54,7 @@ void setup() {
     return;
   }
   // get status of transmitted packet
-  esp_now_register_send_cb(OnDataSent);
+ // esp_now_register_send_cb(OnDataSent);
 
 
   //register peer
@@ -75,10 +77,20 @@ void loop() {
   mySwitch.loop();
   int switchState = mySwitch.getState();
 
+  if(!switchState){
+    readMPU6050();
+    
+  }else{
+    //do nothing
+    message.x = 3.0;
+    message.y = 3.0;
+
+  }
+
   //set values to send
   message.x = message.x;
   message.y = message.y;
-  message.z = message.z;
+
 
   //send message via ESPNOW
   esp_err_t result = esp_now_send(broadcastAddress, (uint8_t *) &message, sizeof(message));
@@ -87,18 +99,9 @@ void loop() {
     Serial.println("Sent with success");
   }else{
     Serial.println("Error sending the data");
-  }delay(2000);
+  }delay(1000);
 
 
-  if(!switchState){
-    readMPU6050();
-    
-
-
-  }else{
-    //do nothing
-
-  }
 
 }
 // * * * * * * * * * * USER DEFINED FUNCTIONS * * * * * * * * * * *
@@ -122,13 +125,12 @@ void readMPU6050(){
     mpu.getEvent(&a, &g, &temp);
 
     //create formatted strong of accel data
-    String data = "X:" + String(a.gyro.x) + ", Y:" + String(a.gyro.y) + ", Z:" + String(a.gyro.z);
+    String data = "X:" + String(a.gyro.x) + ", Y:" + String(a.gyro.y);
     message.x = a.gyro.x;
     message.y = a.gyro.y;
-    message.z = a.gyro.z;
 
     Serial.println(data); //print to esp32 serial monitor
-    delay(300); // delay to manage data rate
+    delay(350); // delay to manage data rate
 
     
 }
@@ -207,7 +209,7 @@ void init6050(){
     break;
   }
   Serial.println("");
-  delay(100);
+ 
 
 }
 
