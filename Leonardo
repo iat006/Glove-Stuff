@@ -1,15 +1,17 @@
 /* Testing arduino leonardo receiving infomation from receiver esp32
 
 */
-// left arrow = 0
-// right arrow = 1
-// esc = 2
+
+String data;
 
 #include <Keyboard.h>
+
 void setup() {
   // put your setup code here, to run once:
+  Serial.begin(115200);
   Serial1.begin(115200);
-
+  Keyboard.begin();
+  delay(10);
 
 }
 
@@ -17,32 +19,41 @@ void loop() {
  // put your main code here, to run repeatedly:
 
 //read uart input
+  if (Serial1.available() > 0){
 
-  if (!Serial1.available()){
-    delay(200);
-  }else{
-    String data = Serial1.readString();
+    data = Serial1.readString();
+    data.trim();
     Serial.println(data);
-  // handle input
-  if(Serial1.readString() == "0"){
-    Keyboard.press(KEY_LEFT_ARROW);
+    // Keyboard.press('a'); // press a one time
 
-    Keyboard.releaseAll();
-    Serial.println("left");
-  }
-  else if (Serial1.readString() == "1"){
-    Keyboard.press(KEY_RIGHT_ARROW);
-    Keyboard.press(KEY_LEFT_GUI);
 
-    Keyboard.releaseAll();
-    Serial.println("right");
-  }
-  else if (Serial1.readString() == "2"){
-    Keyboard.press(KEY_ESC);
+    if (data == "0"){
 
-    Keyboard.releaseAll();
-    Serial.println("Esc");
+      // Keyboard.press(KEY_LEFT_ARROW);
+      Keyboard.releaseAll();
+      Serial.println("waiting");
+    }
+
+    else if (data == "1"){
+
+      Keyboard.press(KEY_RIGHT_ARROW);
+      Keyboard.releaseAll();
+      Serial.println("right");
+    }
+
+    else if (data == "2"){
+
+      Keyboard.press(KEY_LEFT_ARROW);
+      Keyboard.releaseAll();
+      Serial.println("left");
+    }
+
+    else if (data == "3"){
+      Keyboard.press(KEY_ESC);
+      Serial.println("esc");
+    }
+
   }
+
 }
 
-}
